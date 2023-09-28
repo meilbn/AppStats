@@ -38,7 +38,7 @@ class ViewController: UIViewController {
     }
     
     @objc private func uploadAppStats() {
-        AppStats.shared.checkUploadAppCollects()
+//        AppStats.shared.checkUploadAppCollects()
     }
 
 }

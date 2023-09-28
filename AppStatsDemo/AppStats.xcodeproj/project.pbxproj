@@ -78,8 +78,8 @@
 		23A71B962AC54C6300EE48CF /* AppStats */ = {
 			isa = PBXGroup;
 			children = (
-				23A71B972AC54C6300EE48CF /* AppStatsRealm.swift */,
 				23A71B982AC54C6300EE48CF /* AppStats.swift */,
+				23A71B972AC54C6300EE48CF /* AppStatsRealm.swift */,
 				23A71B992AC54C6300EE48CF /* AppStatsAPI.swift */,
 			);
 			name = AppStats;

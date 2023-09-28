@@ -87,12 +87,12 @@ public class AppStats {
         }
     }
     
-    func checkUploadAppCollects() {
+    private func checkUploadAppCollects() {
         guard !_appUUID.appKey.isEmpty && _appUUID.appId > 0 && _appUUID.appUserId > 0 else { return }
         
         if isUploading { return }
         
-        if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < 60.0 * 60 {
+        if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < 30.0 * 60 {
             debugPrint("AppStats - 距离上次提交不到 1 小时，先不提交...")
             return
         }

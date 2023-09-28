@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "AppStats"
-  spec.version      = "0.0.1"
+  spec.version      = "0.0.2"
   spec.summary      = "Collect app events."
   spec.description  = <<-DESC
                    - 收集 app 的一些信息，比如安装次数，启动次数，打开次数
@@ -10,7 +10,7 @@ Pod::Spec.new do |spec|
   spec.homepage     = "https://meilbn.com"
   spec.license      = "MIT"
   spec.author             = { "Meilbn" => "codingallnight@gmail.com" }
-  spec.social_media_url   = "https://twitter.com/meilbn"
+  # spec.social_media_url   = "https://twitter.com/meilbn"
   spec.platform     = :ios, "12.0"
   spec.source       = { :git => "https://github.com/meilbn/AppStats.git", :tag => "#{spec.version}" }
   spec.swift_version             = '5'
