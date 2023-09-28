@@ -19,9 +19,11 @@ class AppStatsUUID: Object {
     @Persisted var systemVersion: String = ""
     @Persisted var deviceModel: String = ""
     @Persisted var appVersion: String = ""
+    @Persisted var appBuild: String = ""
+    @Persisted var region: String = ""
     
     var isUpdateNeeded: Bool {
-        return 0 == appUserId || systemVersion != UIDevice.current.systemVersion || deviceModel != AppStatsHelper.deviceModel || appVersion != AppStatsHelper.appVersion
+        return 0 == appUserId || systemVersion != UIDevice.current.systemVersion || deviceModel != AppStatsHelper.deviceModel || appVersion != AppStatsHelper.appVersion || region != AppStatsHelper.currentRegion || appBuild != AppStatsHelper.appBuild
     }
     
 }
@@ -77,7 +79,7 @@ class AppStatsRealm {
             do {
                 try FileManager.default.createDirectory(at: appStatsDirectoryURL, withIntermediateDirectories: true, attributes: nil)
             } catch {
-                debugPrint("AppStats - create folder failed, error = \(error.localizedDescription)")
+                AppStats.debugLog("AppStats - create folder failed, error = \(error.localizedDescription)")
             }
         }
         
@@ -158,6 +160,8 @@ extension AppStatsRealm {
             uuid.systemVersion = user.systemVersion
             uuid.deviceModel = user.deviceModel
             uuid.appVersion = user.appVersion
+            uuid.appBuild = user.appBuild
+            uuid.region = user.region
         }
     }
     

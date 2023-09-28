@@ -21,7 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window?.rootViewController = ViewController()
         window?.makeKeyAndVisible()
         
-        AppStats.shared.register(withAppKey: "9e43qBz65vD8E7A43492F578C4AECB9D95E184F6A3", endpoint: "http://127.0.0.1:8100")
+        AppStats.shared.register(withAppKey: "9e43qBz6", endpoint: "http://127.0.0.1:8100")
         
         return true
     }

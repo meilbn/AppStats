@@ -13,6 +13,8 @@ public class AppStats {
     
     //
     
+    public var isDebugLogEnable = true
+    
     var _appUUID: AppStatsUUID!
     
     public var appUUID: String {
@@ -33,6 +35,11 @@ public class AppStats {
     
     var endpoint = ""
     
+    // 加入重试机制，防止国行机子上第一次打开需要网络权限弹窗导致暂时无网络，接口调用失败
+    private var retryMaxCount = 100
+    private var currentRetryTimes = 0
+    private var retryTimer: Timer?
+    
     private var isUploading = false
     private var latestUploadedTime: TimeInterval = 0
     
@@ -44,46 +51,61 @@ public class AppStats {
         NotificationCenter.default.addObserver(self, selector: #selector(applicationDidBecomeActive(_:)), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
     
+    static func debugLog(_ log: String) {
+        if AppStats.shared.isDebugLogEnable {
+            debugPrint("\(Date()) AppStats - \(log)")
+        }
+    }
+    
     // MARK: Register App Key
     
     /// 注册 App key
     public func register(withAppKey appkey: String, endpoint: String) {
         assert(appkey.count > 0, "App key can not be empty!")
-        debugPrint("AppStats - register app key")
+        AppStats.debugLog("AppStats - register app key")
         _appUUID = AppStatsRealm.shared.getUUID(withAppKey: appkey)
-        
         self.endpoint = endpoint
-        
-        if _appUUID.appId > 0 {
-            AppStats.shared.updateAppUserIfNeeded()
-        } else {
-            AppStatsAPIManager.getAppId(withAppKey: appkey, bundleId: AppStatsHelper.bundleID) { _, success, data, msg in
-                if success && data > 0 {
-                    AppStatsRealm.shared.updateAppId(data, forUUID: AppStats.shared._appUUID)
-                    AppStats.shared.updateAppUserIfNeeded()
-                } else {
-                    debugPrint("AppStats - register app key failed, error: \(msg ?? "nil"), with return data: \(data)")
-                }
-            } failure: { error in
-                debugPrint("AppStats - register app key failed, error: \(error.localizedDescription)")
-            }
-        }
+        checkAppId()
     }
     
     // MARK: Private Methods
     
+    private func checkAppId() {
+        if _appUUID.appId > 0 {
+            AppStats.shared.updateAppUserIfNeeded()
+        } else {
+            AppStatsAPIManager.getAppId(withAppKey: _appUUID.appKey, bundleId: AppStatsHelper.bundleID) { _, success, data, msg in
+                if success && data > 0 {
+                    AppStatsRealm.shared.updateAppId(data, forUUID: AppStats.shared._appUUID)
+                    AppStats.shared.updateAppUserIfNeeded()
+                } else {
+                    AppStats.debugLog("AppStats - register app key failed, error: \(msg ?? "nil"), with return data: \(data)")
+                }
+            } failure: { error in
+                AppStats.debugLog("AppStats - register app key failed, error: \(error.localizedDescription)")
+                AppStats.shared.startRetryTimer()
+            }
+        }
+    }
+    
     /// 更新 App user 信息
     private func updateAppUserIfNeeded() {
-        if !_appUUID.isUpdateNeeded { return }
+        if !_appUUID.isUpdateNeeded {
+            invalidateRetryTimer()
+            return
+        }
         
         AppStatsAPIManager.updateAppUser(withAppUserId: _appUUID.appUserId, appId: _appUUID.appId) { _, success, data, msg in
             if success, let user = data {
                 AppStatsRealm.shared.updateUserInfos(withUser: user, forUUID: AppStats.shared._appUUID)
+                AppStats.shared.invalidateRetryTimer()
+                AppStats.shared.checkUploadAppCollects()
             } else {
-                debugPrint("AppStats - update app user failed, error: \(msg ?? "nil")")
+                AppStats.debugLog("AppStats - update app user failed, error: \(msg ?? "nil")")
             }
         } failure: { error in
-            debugPrint("AppStats - update app user failed, error: \(error.localizedDescription)")
+            AppStats.debugLog("AppStats - update app user failed, error: \(error.localizedDescription)")
+            AppStats.shared.startRetryTimer()
         }
     }
     
@@ -93,7 +115,7 @@ public class AppStats {
         if isUploading { return }
         
         if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < 30.0 * 60 {
-            debugPrint("AppStats - 距离上次提交不到 1 小时，先不提交...")
+            AppStats.debugLog("AppStats - 距离上次提交不到半小时，先不提交...")
             return
         }
         
@@ -107,29 +129,54 @@ public class AppStats {
                     AppStatsRealm.shared.appEventsDidUpload(events)
                     self?.latestUploadedTime = Date().timeIntervalSince1970
                 } else {
-                    debugPrint("AppStats - upload app stats failed, error: \(msg ?? "nil")")
+                    AppStats.debugLog("AppStats - upload app stats failed, error: \(msg ?? "nil")")
                 }
                 self?.isUploading = false
             } failure: { [weak self] error in
-                debugPrint("AppStats - upload app stats failed, error: \(error.localizedDescription)")
+                AppStats.debugLog("AppStats - upload app stats failed, error: \(error.localizedDescription)")
                 self?.isUploading = false
             }
         }
     }
     
+    private func invalidateRetryTimer() {
+        retryTimer?.invalidate()
+        retryTimer = nil
+    }
+    
+    private func startRetryTimer() {
+        if let timer = retryTimer, timer.isValid { return }
+        
+        invalidateRetryTimer()
+        
+        let timer = Timer(timeInterval: 5.0, target: self, selector: #selector(retryRegiter), userInfo: nil, repeats: false)
+        RunLoop.current.add(timer, forMode: .common)
+        retryTimer = timer
+    }
+    
+    @objc private func retryRegiter() {
+        if currentRetryTimes >= retryMaxCount {
+            invalidateRetryTimer()
+            return
+        }
+        
+        currentRetryTimes += 1
+        checkAppId()
+    }
+    
     // MARK: Notifications
     
     @objc private func applicationDidFinishLaunching(_ ntf: Notification) {
-        debugPrint("AppStats - \(#function)")
+        AppStats.debugLog("AppStats - \(#function)")
         AppStatsRealm.shared.addAppLaunchingStat()
     }
     
     @objc private func applicationDidEnterBackground(_ ntf: Notification) {
-        debugPrint("AppStats - \(#function)")
+        AppStats.debugLog("AppStats - \(#function)")
     }
     
     @objc private func applicationDidBecomeActive(_ ntf: Notification) {
-        debugPrint("AppStats - \(#function)")
+        AppStats.debugLog("AppStats - \(#function)")
         AppStatsRealm.shared.addAppBecomeActiveStat()
         checkUploadAppCollects()
     }
@@ -138,6 +185,7 @@ public class AppStats {
     
     public func addAppEvent(_ event: String, attrs: [String : Codable]?) {
         AppStatsRealm.shared.addAppEvent(event, attrs: attrs)
+        checkUploadAppCollects()
     }
     
 }
@@ -162,6 +210,14 @@ struct AppStatsHelper {
         }
     }
     
+    static var appBuild: String {
+        if let buildVersion = Bundle.main.infoDictionary?[kCFBundleVersionKey as String] {
+            return "\(buildVersion)"
+        } else {
+            return ""
+        }
+    }
+    
     static var deviceModel: String {
         var systemInfo = utsname()
         uname(&systemInfo)
@@ -171,6 +227,15 @@ struct AppStatsHelper {
             return identifier + String(UnicodeScalar(UInt8(value)))
         }
         return identifier
+    }
+    
+    static var currentRegion: String {
+        if #available(iOS 16, *) {
+            return Locale.current.region?.identifier ?? "Unknown"
+        } else {
+            // Fallback on earlier versions
+            return Locale.current.regionCode ?? "Unknown"
+        }
     }
     
     // MARK: Time

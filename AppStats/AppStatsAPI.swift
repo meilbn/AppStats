@@ -17,6 +17,8 @@ struct AppAPIUser: Codable {
     var systemVersion: String
     var deviceModel: String
     var appVersion: String
+    var appBuild: String
+    var region: String
     
 }
 
@@ -97,7 +99,8 @@ extension AppStatsAPI: TargetType {
         case .getAppId(let appKey, let bundleId):
             return .requestParameters(parameters: ["key" : appKey, "bundleId" : bundleId], encoding: URLEncoding.default)
         case .updateAppUser(let appUserId, let appId):
-            var params: [String : Any] = ["appId" : appId, "uuid" : AppStats.shared.appUUID, "platform" : UIDevice.current.systemName, "systemVersion" : UIDevice.current.systemVersion, "deviceModel" : AppStatsHelper.deviceModel, "appVersion" : AppStatsHelper.appVersion]
+            var params: [String : Any] = ["appId" : appId, "uuid" : AppStats.shared.appUUID, "platform" : UIDevice.current.systemName, "systemVersion" : UIDevice.current.systemVersion,
+                                          "deviceModel" : AppStatsHelper.deviceModel, "appVersion" : AppStatsHelper.appVersion, "appBuild" : AppStatsHelper.appBuild, "region" : AppStatsHelper.currentRegion]
             if let uid = appUserId, uid > 0 { params["id"] = uid }
             return .requestParameters(parameters: params, encoding: JSONEncoding.default)
         case .clcAppStatsAndEvents(_, _, let stats, let events):
@@ -197,7 +200,7 @@ extension AppStatsAPIManager {
                     msg = processingErrorMessageForToken(withJSON: json)
                 }
             } catch {
-                debugPrint("\(#function) - error: \(error)")
+//                debugPrint("\(#function) - error: \(error)")
 //                msg = error.localizedDescription
                 msg = "返回数据解析出错"
             }
@@ -232,7 +235,7 @@ extension AppStatsAPIManager {
                     msg = processingErrorMessageForToken(withJSON: json)
                 }
             } catch {
-                debugPrint("\(#function) - error: \(error)")
+//                debugPrint("\(#function) - error: \(error)")
 //                msg = error.localizedDescription
                 msg = "返回数据解析出错"
             }
@@ -276,7 +279,7 @@ extension AppStatsAPIManager {
                     msg = "返回数据解析失败" // error.localizedDescription
                 }
             } catch {
-                debugPrint("\(#function) - error: \(error)")
+//                debugPrint("\(#function) - error: \(error)")
 //                msg = error.localizedDescription
                 msg = "返回数据解析出错"
             }
