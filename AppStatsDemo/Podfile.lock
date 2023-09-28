@@ -4,11 +4,11 @@ PODS:
     - Moya/Core (= 15.0.0)
   - Moya/Core (15.0.0):
     - Alamofire (~> 5.0)
-  - Realm (10.42.3):
-    - Realm/Headers (= 10.42.3)
-  - Realm/Headers (10.42.3)
-  - RealmSwift (10.42.3):
-    - Realm (= 10.42.3)
+  - Realm (10.42.4):
+    - Realm/Headers (= 10.42.4)
+  - Realm/Headers (10.42.4)
+  - RealmSwift (10.42.4):
+    - Realm (= 10.42.4)
   - SwiftyJSON (5.0.1)
 
 DEPENDENCIES:
@@ -28,8 +28,8 @@ SPEC REPOS:
 SPEC CHECKSUMS:
   Alamofire: 0e92e751b3e9e66d7982db43919d01f313b8eb91
   Moya: 138f0573e53411fb3dc17016add0b748dfbd78ee
-  Realm: ac7fa0100533e1c91511b19a58e837f9cfd80bb7
-  RealmSwift: a06d4e3c623a5f236bd9fe214f0bfdfee20312c2
+  Realm: a3a10c2110744ec9510a5fc21a6051818c6181c7
+  RealmSwift: d25fa6c3cbb722a698993a501206d9841d79ca32
   SwiftyJSON: 2f33a42c6fbc52764d96f13368585094bfd8aa5e
 
 PODFILE CHECKSUM: 0cafd03bd1bedd8339f8b38207917fd4e46b5b18

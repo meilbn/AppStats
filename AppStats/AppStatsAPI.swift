@@ -59,16 +59,17 @@ extension AppStatsAPI: TargetType {
     var headers: [String : String]? {
         var dict: [String : String] = ["Content-type" : "application/x-www-form-urlencoded;charset=UTF-8"]
         
-//        let appUserId = AppStats.shared.appUserId
-//        if appUserId > 0 {
-//            dict["app_user_id"] = "\(appUserId)"
-//        }
-        
         switch self {
         case .clcAppStatsAndEvents(let appUserId, _, _, _):
             dict["app_user_id"] = "\(appUserId)"
         default: break
         }
+        
+        let ts = String(format: "%.0lf", Date().timeIntervalSince1970)
+        let rts = String(ts.reversed())
+        let ori = "Meilbn_AppStats_" + rts
+        dict["sign"] = ori.sha256()
+        dict["ts"] = ts
         
         return dict
     }

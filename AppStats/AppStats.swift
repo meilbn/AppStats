@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CommonCrypto
 
 public class AppStats {
     
@@ -114,7 +115,7 @@ public class AppStats {
         
         if isUploading { return }
         
-        if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < 30.0 * 60 {
+        if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < (30.0 * 60.0) {
             AppStats.debugLog("AppStats - 距离上次提交不到半小时，先不提交...")
             return
         }
@@ -256,4 +257,63 @@ struct AppStatsHelper {
 
 //
 
+extension String {
+    
+    // Encrypt
+    
+//    var MD5Data: Data {
+//        let length = Int(CC_MD5_DIGEST_LENGTH)
+//        let messageData = self.data(using:.utf8)!
+//        var digestData = Data(count: length)
+//
+//        _ = digestData.withUnsafeMutableBytes { digestBytes -> UInt8 in
+//            messageData.withUnsafeBytes { messageBytes -> UInt8 in
+//                if let messageBytesBaseAddress = messageBytes.baseAddress, let digestBytesBlindMemory = digestBytes.bindMemory(to: UInt8.self).baseAddress {
+//                    let messageLength = CC_LONG(messageData.count)
+//                    CC_MD5(messageBytesBaseAddress, messageLength, digestBytesBlindMemory)
+//                }
+//                return 0
+//            }
+//        }
+//        return digestData
+//    }
+    
+    func sha256() -> String {
+        if let data = self.data(using: .utf8) {
+            return data.sha256()
+        }
+        return ""
+    }
+    
+}
 
+extension Data {
+    
+    func sha256() -> String{
+        return hexStringFromData(input: digest(input: self as NSData))
+    }
+    
+    func digest(input : NSData) -> NSData {
+        let digestLength = Int(CC_SHA256_DIGEST_LENGTH)
+        var hash = [UInt8](repeating: 0, count: digestLength)
+        CC_SHA256(input.bytes, UInt32(input.length), &hash)
+        return NSData(bytes: hash, length: digestLength)
+    }
+    
+    func hexStringFromData(input: NSData) -> String {
+        var bytes = [UInt8](repeating: 0, count: input.length)
+        input.getBytes(&bytes, length: input.length)
+        
+        var hexString = ""
+        for byte in bytes {
+            hexString += String(format:"%02x", UInt8(byte))
+        }
+        
+        return hexString
+    }
+    
+//    var MD5Hex: String {
+//        return self.map { String(format: "%02hhx", $0) }.joined()
+//    }
+    
+}
