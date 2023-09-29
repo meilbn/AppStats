@@ -41,6 +41,9 @@ public class AppStats {
     private var currentRetryTimes = 0
     private var retryTimer: Timer?
     
+    private var isDidEnterBackground = false
+    private var isDidBecomeActive = false
+    
     private var isUploading = false
     private var latestUploadedTime: TimeInterval = 0
     
@@ -174,12 +177,19 @@ public class AppStats {
     
     @objc private func applicationDidEnterBackground(_ ntf: Notification) {
         AppStats.debugLog("AppStats - \(#function)")
+        isDidEnterBackground = true
     }
     
     @objc private func applicationDidBecomeActive(_ ntf: Notification) {
         AppStats.debugLog("AppStats - \(#function)")
-        AppStatsRealm.shared.addAppBecomeActiveStat()
-        checkUploadAppCollects()
+        if !isDidBecomeActive || isDidEnterBackground {
+            isDidBecomeActive = true
+            
+            AppStatsRealm.shared.addAppBecomeActiveStat()
+            checkUploadAppCollects()
+            
+            isDidEnterBackground = false
+        }
     }
     
     // MARK: Add App Event
