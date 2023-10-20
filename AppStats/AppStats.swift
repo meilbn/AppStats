@@ -16,28 +16,20 @@ public class AppStats {
     
     public var isDebugLogEnable = true
     
-    var _appUUID: AppStatsUUID!
+    var _appUUID: AppStatsUUID?
     
     public var appUUID: String {
-        if nil != _appUUID {
-            return _appUUID.uuid
-        }
-        
-        return ""
+        return _appUUID?.uuid ?? ""
     }
     
     public var appUserId: Int {
-        if nil != _appUUID {
-            return _appUUID.appUserId
-        }
-        
-        return 0
+        return _appUUID?.appUserId ?? 0
     }
     
     var endpoint = ""
     
     // 加入重试机制，防止国行机子上第一次打开需要网络权限弹窗导致暂时无网络，接口调用失败
-    private var retryMaxCount = 100
+    private var retryMaxCount = 10
     private var currentRetryTimes = 0
     private var retryTimer: Timer?
     
@@ -66,7 +58,7 @@ public class AppStats {
     /// 注册 App key
     public func register(withAppKey appkey: String, endpoint: String) {
         assert(appkey.count > 0, "App key can not be empty!")
-        AppStats.debugLog("AppStats - register app key")
+        AppStats.debugLog("register app key")
         _appUUID = AppStatsRealm.shared.getUUID(withAppKey: appkey)
         self.endpoint = endpoint
         checkAppId()
@@ -75,18 +67,27 @@ public class AppStats {
     // MARK: Private Methods
     
     private func checkAppId() {
-        if _appUUID.appId > 0 {
+        guard let app = _appUUID else {
+            return
+        }
+        
+        if app.appId > 0 {
             AppStats.shared.updateAppUserIfNeeded()
         } else {
-            AppStatsAPIManager.getAppId(withAppKey: _appUUID.appKey, bundleId: AppStatsHelper.bundleID) { _, success, data, msg in
+            if endpoint.isEmpty {
+                AppStats.debugLog("the endpoint is empty...")
+                return
+            }
+            
+            AppStatsAPIManager.getAppId(withAppKey: app.appKey, bundleId: AppStatsHelper.bundleID) { _, success, data, msg in
                 if success && data > 0 {
-                    AppStatsRealm.shared.updateAppId(data, forUUID: AppStats.shared._appUUID)
+                    AppStatsRealm.shared.updateAppId(data, forUUID: app)
                     AppStats.shared.updateAppUserIfNeeded()
                 } else {
-                    AppStats.debugLog("AppStats - register app key failed, error: \(msg ?? "nil"), with return data: \(data)")
+                    AppStats.debugLog("register app key failed, error: \(msg ?? "nil"), with return data: \(data)")
                 }
             } failure: { error in
-                AppStats.debugLog("AppStats - register app key failed, error: \(error.localizedDescription)")
+                AppStats.debugLog("register app key failed, error: \(error.localizedDescription)")
                 AppStats.shared.startRetryTimer()
             }
         }
@@ -94,32 +95,50 @@ public class AppStats {
     
     /// 更新 App user 信息
     private func updateAppUserIfNeeded() {
-        if !_appUUID.isUpdateNeeded {
+        guard let app = _appUUID else {
+            return
+        }
+        
+        if !app.isUpdateNeeded {
             invalidateRetryTimer()
             return
         }
         
-        AppStatsAPIManager.updateAppUser(withAppUserId: _appUUID.appUserId, appId: _appUUID.appId) { _, success, data, msg in
+        if endpoint.isEmpty {
+            AppStats.debugLog("The endpoint is empty...")
+            return
+        }
+        
+        AppStatsAPIManager.updateAppUser(withAppUserId: app.appUserId, appId: app.appId) { _, success, data, msg in
             if success, let user = data {
-                AppStatsRealm.shared.updateUserInfos(withUser: user, forUUID: AppStats.shared._appUUID)
+                AppStatsRealm.shared.updateUserInfos(withUser: user, forUUID: app)
                 AppStats.shared.invalidateRetryTimer()
                 AppStats.shared.checkUploadAppCollects()
             } else {
-                AppStats.debugLog("AppStats - update app user failed, error: \(msg ?? "nil")")
+                AppStats.debugLog("update app user failed, error: \(msg ?? "nil")")
             }
         } failure: { error in
-            AppStats.debugLog("AppStats - update app user failed, error: \(error.localizedDescription)")
+            AppStats.debugLog("update app user failed, error: \(error.localizedDescription)")
             AppStats.shared.startRetryTimer()
         }
     }
     
     private func checkUploadAppCollects() {
-        guard !_appUUID.appKey.isEmpty && _appUUID.appId > 0 && _appUUID.appUserId > 0 else { return }
+        guard let app = _appUUID, !app.appKey.isEmpty && app.appId > 0 && app.appUserId > 0 else { 
+            return
+        }
         
-        if isUploading { return }
+        if isUploading { 
+            return
+        }
+        
+        if endpoint.isEmpty {
+            AppStats.debugLog("The endpoint is empty...")
+            return
+        }
         
         if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < (30.0 * 60.0) {
-            AppStats.debugLog("AppStats - 距离上次提交不到半小时，先不提交...")
+            AppStats.debugLog("距离上次提交不到半小时，先不提交...")
             return
         }
         
@@ -127,17 +146,17 @@ public class AppStats {
         let events = AppStatsRealm.shared.getNotUploadedAppEvents().array
         if stats.count > 0 || events.count > 0 {
             isUploading = true
-            AppStatsAPIManager.collectAppStatsAndEvents(stats, events: events, appId: _appUUID.appId, appUserId: _appUUID.appUserId) { [weak self] _, success, msg in
+            AppStatsAPIManager.collectAppStatsAndEvents(stats, events: events, appId: app.appId, appUserId: app.appUserId) { [weak self] _, success, msg in
                 if success {
                     AppStatsRealm.shared.appStatsDidUpload(stats)
                     AppStatsRealm.shared.appEventsDidUpload(events)
                     self?.latestUploadedTime = Date().timeIntervalSince1970
                 } else {
-                    AppStats.debugLog("AppStats - upload app stats failed, error: \(msg ?? "nil")")
+                    AppStats.debugLog("upload app stats failed, error: \(msg ?? "nil")")
                 }
                 self?.isUploading = false
             } failure: { [weak self] error in
-                AppStats.debugLog("AppStats - upload app stats failed, error: \(error.localizedDescription)")
+                AppStats.debugLog("upload app stats failed, error: \(error.localizedDescription)")
                 self?.isUploading = false
             }
         }
@@ -149,7 +168,9 @@ public class AppStats {
     }
     
     private func startRetryTimer() {
-        if let timer = retryTimer, timer.isValid { return }
+        if let timer = retryTimer, timer.isValid {
+            return
+        }
         
         invalidateRetryTimer()
         
@@ -171,17 +192,17 @@ public class AppStats {
     // MARK: Notifications
     
     @objc private func applicationDidFinishLaunching(_ ntf: Notification) {
-        AppStats.debugLog("AppStats - \(#function)")
+        AppStats.debugLog(#function)
         AppStatsRealm.shared.addAppLaunchingStat()
     }
     
     @objc private func applicationDidEnterBackground(_ ntf: Notification) {
-        AppStats.debugLog("AppStats - \(#function)")
+        AppStats.debugLog(#function)
         isDidEnterBackground = true
     }
     
     @objc private func applicationDidBecomeActive(_ ntf: Notification) {
-        AppStats.debugLog("AppStats - \(#function)")
+        AppStats.debugLog(#function)
         if !isDidBecomeActive || isDidEnterBackground {
             isDidBecomeActive = true
             
@@ -288,9 +309,9 @@ extension String {
 //        return digestData
 //    }
     
-    func sha256() -> String {
+    public func app_stats_sha256() -> String {
         if let data = self.data(using: .utf8) {
-            return data.sha256()
+            return data.app_stats_sha256()
         }
         return ""
     }
@@ -299,18 +320,18 @@ extension String {
 
 extension Data {
     
-    func sha256() -> String{
-        return hexStringFromData(input: digest(input: self as NSData))
+    public func app_stats_sha256() -> String{
+        return app_stats_hexStringFromData(input: app_stats_digest(input: self as NSData))
     }
     
-    func digest(input : NSData) -> NSData {
+    public func app_stats_digest(input : NSData) -> NSData {
         let digestLength = Int(CC_SHA256_DIGEST_LENGTH)
         var hash = [UInt8](repeating: 0, count: digestLength)
         CC_SHA256(input.bytes, UInt32(input.length), &hash)
         return NSData(bytes: hash, length: digestLength)
     }
     
-    func hexStringFromData(input: NSData) -> String {
+    public func app_stats_hexStringFromData(input: NSData) -> String {
         var bytes = [UInt8](repeating: 0, count: input.length)
         input.getBytes(&bytes, length: input.length)
         

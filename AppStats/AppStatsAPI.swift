@@ -38,6 +38,17 @@ struct AppAPIUser: Codable {
 //    
 //}
 
+public struct AppStatsAPISign {
+    
+    public static func generateCurrentTimestampSign() -> (sign: String, ts: String) {
+        let ts = String(format: "%.0lf", Date().timeIntervalSince1970)
+        let rts = String(ts.reversed())
+        let ori = "Meilbn_AppStats_" + rts
+        return (ori.app_stats_sha256(), ts)
+    }
+    
+}
+
 //
 
 enum AppStatsAPI {
@@ -65,11 +76,12 @@ extension AppStatsAPI: TargetType {
         default: break
         }
         
-        let ts = String(format: "%.0lf", Date().timeIntervalSince1970)
-        let rts = String(ts.reversed())
-        let ori = "Meilbn_AppStats_" + rts
-        dict["sign"] = ori.sha256()
-        dict["ts"] = ts
+//        let ts = String(format: "%.0lf", Date().timeIntervalSince1970)
+//        let rts = String(ts.reversed())
+//        let ori = "Meilbn_AppStats_" + rts
+        let signs = AppStatsAPISign.generateCurrentTimestampSign()
+        dict["sign"] = signs.sign // ori.app_stats_sha256()
+        dict["ts"] = signs.ts
         
         return dict
     }

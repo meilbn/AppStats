@@ -172,8 +172,9 @@ extension AppStatsRealm {
 extension AppStatsRealm {
     
     func addAppLaunchingStat() {
-        let appKey = AppStats.shared._appUUID.appKey
-        if appKey.isEmpty { return }
+        guard let app = AppStats.shared._appUUID, let appKey = AppStats.shared._appUUID?.appKey, !appKey.isEmpty else {
+            return
+        }
         
         // 先找到今日的
         if let stat = getTodayStat(withType: .launching) {
@@ -189,7 +190,7 @@ extension AppStatsRealm {
         let stat = AppStat()
         stat.id = maxIdOf(AppStat.self)
         stat.appKey = appKey
-        stat.appId = AppStats.shared._appUUID.appId
+        stat.appId = app.appId
         stat.type = .launching
         stat.date = AppStatsHelper.shortDateFormatter.string(from: Date())
         
@@ -199,17 +200,22 @@ extension AppStatsRealm {
     }
     
     func getTodayStat(withType type: AppStatType) -> AppStat? {
+        guard let app = AppStats.shared._appUUID else {
+            return nil
+        }
+        
         let today = AppStatsHelper.shortDateFormatter.string(from: Date())
         return realm.objects(AppStat.self).where {
-            $0.appKey == AppStats.shared._appUUID.appKey && $0.type == type && $0.date == today
+            $0.appKey == app.appKey && $0.type == type && $0.date == today
         }.first
     }
     
     //
     
     func addAppBecomeActiveStat() {
-        let appKey = AppStats.shared._appUUID.appKey
-        if appKey.isEmpty { return }
+        guard let app = AppStats.shared._appUUID, let appKey = AppStats.shared._appUUID?.appKey, !appKey.isEmpty else {
+            return
+        }
         
         // 先找到今日的
         if let stat = getTodayStat(withType: .active) {
@@ -225,7 +231,7 @@ extension AppStatsRealm {
         let stat = AppStat()
         stat.id = maxIdOf(AppStat.self)
         stat.appKey = appKey
-        stat.appId = AppStats.shared._appUUID.appId
+        stat.appId = app.appId
         stat.type = .active
         stat.date = AppStatsHelper.shortDateFormatter.string(from: Date())
         
@@ -238,7 +244,7 @@ extension AppStatsRealm {
     
     func getNotUploadedAppStats() -> Results<AppStat> {
         return realm.objects(AppStat.self).where {
-            $0.appKey == AppStats.shared._appUUID.appKey && $0.isUploaded == false
+            $0.appKey == (AppStats.shared._appUUID?.appKey ?? "") && $0.isUploaded == false
         }
     }
     
@@ -261,13 +267,14 @@ extension AppStatsRealm {
     func addAppEvent(_ event: String, attrs: [String : Codable]?) {
         if event.isEmpty { return }
         
-        let appKey = AppStats.shared._appUUID.appKey
-        if appKey.isEmpty { return }
+        guard let app = AppStats.shared._appUUID, let appKey = AppStats.shared._appUUID?.appKey, !appKey.isEmpty else {
+            return
+        }
         
         let obj = AppEvent()
         obj.id = maxIdOf(AppEvent.self)
         obj.appKey = appKey
-        obj.appId = AppStats.shared._appUUID.appId
+        obj.appId = app.appId
         obj.event = event
         
         if let ats = attrs, let data = try? JSONSerialization.data(withJSONObject: ats), let jsonString = String(data: data, encoding: .utf8) {
@@ -281,7 +288,7 @@ extension AppStatsRealm {
     
     func getNotUploadedAppEvents() -> Results<AppEvent> {
         return realm.objects(AppEvent.self).where {
-            $0.appKey == AppStats.shared._appUUID.appKey && $0.isUploaded == false
+            $0.appKey == (AppStats.shared._appUUID?.appKey ?? "") && $0.isUploaded == false
         }
     }
     

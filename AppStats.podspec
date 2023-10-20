@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "AppStats"
-  spec.version      = "0.0.5"
+  spec.version      = "0.0.6"
   spec.summary      = "Collect app events."
   spec.description  = <<-DESC
                    - 收集 app 的一些信息，比如安装次数，启动次数，打开次数
