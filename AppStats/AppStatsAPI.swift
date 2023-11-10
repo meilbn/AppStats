@@ -72,7 +72,7 @@ extension AppStatsAPI: TargetType {
         
         switch self {
         case .clcAppStatsAndEvents(let appUserId, _, _, _):
-            dict["app_user_id"] = "\(appUserId)"
+            dict["auid"] = "\(appUserId)"
         default: break
         }
         
