@@ -7,6 +7,7 @@
 
 import UIKit
 import CommonCrypto
+//import CoreLocation
 
 public class AppStats {
     
@@ -27,6 +28,10 @@ public class AppStats {
     }
     
     var endpoint = ""
+    
+//    public var isLocationEnable = false
+//    internal var currentLocationCoordinate: CLLocationCoordinate2D?
+//    internal var currentLocationInfo: String?
     
     // 加入重试机制，防止国行机子上第一次打开需要网络权限弹窗导致暂时无网络，接口调用失败
     private var retryMaxCount = 10
@@ -123,8 +128,8 @@ public class AppStats {
         }
     }
     
-    private func checkUploadAppCollects() {
-        guard let app = _appUUID, !app.appKey.isEmpty && app.appId > 0 && app.appUserId > 0 else { 
+    private func checkUploadAppCollects(ignoreLatestUploadedTime: Bool = false) {
+        guard let app = _appUUID, !app.appKey.isEmpty && app.appId > 0 && app.appUserId > 0 else {
             return
         }
         
@@ -137,7 +142,7 @@ public class AppStats {
             return
         }
         
-        if latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < (30.0 * 60.0) {
+        if !ignoreLatestUploadedTime && latestUploadedTime > 0 && Date().timeIntervalSince1970 - latestUploadedTime < (30.0 * 60.0) {
             AppStats.debugLog("距离上次提交不到半小时，先不提交...")
             return
         }
@@ -217,7 +222,7 @@ public class AppStats {
     
     public func addAppEvent(_ event: String, attrs: [String : Codable]?) {
         AppStatsRealm.shared.addAppEvent(event, attrs: attrs)
-        checkUploadAppCollects()
+        checkUploadAppCollects(ignoreLatestUploadedTime: true)
     }
     
 }
